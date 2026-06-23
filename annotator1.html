@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IR-RGB 数据集标注工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#1f2329;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#toolbar{background:#ffffff;padding:7px 12px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #dde1e7;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tool-btn{background:#f4f6f9;border:1px solid #dde1e7;color:#3a3f4b;padding:5px 11px;border-radius:5px;cursor:pointer;font-size:12px;transition:all .15s;font-weight:500}
+.tool-btn:hover{background:#e8ecf2;border-color:#b8c0cc}
+.tool-btn.active{background:#2563eb;border-color:#2563eb;color:#fff;box-shadow:0 1px 4px rgba(37,99,235,.3)}
+.tool-sep{width:1px;height:22px;background:#dde1e7;margin:0 3px}
+#main{display:flex;flex:1;overflow:hidden}
+#left-panel{width:220px;background:#ffffff;border-right:1px solid #dde1e7;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+#canvas-area{flex:1;background:#e4e8ef;position:relative;overflow:hidden;background-image:radial-gradient(#c8cdd6 1px,transparent 1px);background-size:20px 20px}
+#scene{position:absolute;display:flex;align-items:center;justify-content:center;}
+#right-panel{width:248px;background:#ffffff;border-left:1px solid #dde1e7;overflow-y:auto;padding:10px;flex-shrink:0}
+.panel-section{margin-bottom:12px}
+.panel-title{font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;padding:4px 8px;background:#f4f6f9;border-radius:4px;margin-bottom:6px;border-left:3px solid #2563eb}
+#file-list{overflow-y:auto;padding:4px;height:100%}
+.file-item{padding:5px 8px;border-radius:4px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:5px;border:1px solid transparent;color:#374151}
+.file-item:hover{background:#f4f6f9;border-color:#dde1e7}
+.file-item.active{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.file-item .badge{font-size:9px;padding:1px 5px;border-radius:3px;background:#dbeafe;color:#1d4ed8;font-weight:600;flex-shrink:0}
+.file-item .badge.saved{background:#dcfce7;color:#16a34a}
+.file-item .fname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#canvas-wrapper{position:relative;cursor:crosshair;box-shadow:0 4px 20px rgba(0,0,0,.18);border-radius:2px;flex-shrink:0}
+#main-canvas{display:block;border-radius:2px}
+#overlay-canvas{position:absolute;top:0;left:0;border-radius:2px}
+.slider-row{margin-bottom:9px}
+.slider-row label{font-size:11px;color:#6b7280;display:flex;justify-content:space-between;margin-bottom:2px}
+.slider-row label span{color:#2563eb;font-weight:600}
+.slider-row input[type=range]{width:100%;accent-color:#2563eb;height:4px}
+#class-list{padding:4px;overflow-y:auto;height:100%}
+.class-item{padding:5px 8px;border-radius:4px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:7px;margin-bottom:2px;border:1px solid transparent;color:#374151}
+.class-item:hover{background:#f4f6f9}
+.class-item.active{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.class-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px rgba(0,0,0,.1)}
+.class-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+#ann-list{padding:4px;overflow-y:auto;height:100%}
+.ann-item{padding:4px 7px;border-radius:4px;font-size:10px;margin-bottom:2px;cursor:pointer;display:flex;align-items:center;gap:5px;border:1px solid transparent;color:#374151}
+.ann-item:hover{background:#f4f6f9}
+.ann-item.selected{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.ann-delete{margin-left:auto;color:#ef4444;font-size:15px;line-height:1;cursor:pointer;padding:0 2px;opacity:.6}
+.ann-delete:hover{opacity:1}
+select{background:#fff;color:#374151;border:1px solid #dde1e7;padding:4px 7px;border-radius:4px;font-size:11px;width:100%}
+select:focus{outline:none;border-color:#2563eb}
+input[type=text]{background:#fff;color:#374151;border:1px solid #dde1e7;padding:4px 7px;border-radius:4px;font-size:11px;width:100%}
+input[type=text]:focus{outline:none;border-color:#2563eb}
+.btn-row{display:flex;gap:4px;flex-wrap:wrap}
+.btn-sm{background:#f4f6f9;border:1px solid #dde1e7;color:#374151;padding:4px 9px;border-radius:4px;cursor:pointer;font-size:11px;flex:1;font-weight:500;white-space:nowrap}
+.btn-sm:hover{background:#e8ecf2;border-color:#b8c0cc}
+.btn-danger{border-color:#fca5a5;color:#dc2626;background:#fff5f5}
+.btn-danger:hover{background:#dc2626;color:#fff;border-color:#dc2626}
+.btn-success{border-color:#86efac;color:#16a34a;background:#f0fdf4}
+.btn-success:hover{background:#16a34a;color:#fff;border-color:#16a34a}
+.btn-primary{border-color:#93c5fd;color:#2563eb;background:#eff6ff}
+.btn-primary:hover{background:#2563eb;color:#fff;border-color:#2563eb}
+#status-bar{background:#f8fafc;padding:4px 12px;font-size:11px;color:#9ca3af;display:flex;justify-content:space-between;border-top:1px solid #dde1e7}
+.resize-handle{width:4px;background:#dde1e7;cursor:col-resize;flex-shrink:0;transition:background .15s;z-index:10}
+.resize-handle:hover,.resize-handle.dragging{background:#2563eb}
+.radio-group{display:flex;gap:4px;flex-wrap:wrap}
+.radio-btn{background:#f4f6f9;border:1px solid #dde1e7;color:#6b7280;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:500}
+.radio-btn:hover{background:#e8ecf2;color:#374151}
+.radio-btn.active{background:#2563eb;border-color:#2563eb;color:#fff}
+.add-class-row{display:flex;gap:4px;margin-top:6px}
+/* Class picker popup */
+#class-picker-mask{position:fixed;inset:0;z-index:999;display:none}
+#class-picker{position:fixed;z-index:1000;background:#fff;border:1px solid #dde1e7;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:14px;min-width:200px;display:none}
+#class-picker h4{font-size:12px;font-weight:700;color:#374151;margin-bottom:8px}
+#class-picker-list{display:flex;flex-direction:column;gap:3px;max-height:220px;overflow-y:auto;margin-bottom:8px}
+.picker-item{padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:7px;border:1px solid transparent;color:#374151}
+.picker-item:hover{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+#class-picker-new{display:flex;gap:5px;margin-top:4px;border-top:1px solid #f0f2f5;padding-top:8px}
+#class-picker-new input{flex:1;font-size:11px;padding:4px 7px;border:1px solid #dde1e7;border-radius:4px}
+#class-picker-new button{font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid #93c5fd;background:#eff6ff;color:#2563eb;cursor:pointer}
+#class-picker-new button:hover{background:#2563eb;color:#fff}
+.add-class-row input{flex:1}
+.color-pick{width:28px;height:28px;border:1px solid #dde1e7;border-radius:4px;cursor:pointer;padding:2px;background:#fff}
+/* Folder config */
+.dir-row{display:flex;align-items:center;gap:5px;margin-bottom:6px}
+.dir-row .dir-label{font-size:10px;color:#6b7280;width:36px;flex-shrink:0}
+.dir-row .dir-path{flex:1;font-size:10px;color:#374151;background:#f4f6f9;border:1px solid #dde1e7;border-radius:3px;padding:3px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.dir-row .dir-path.set{color:#16a34a;border-color:#86efac;background:#f0fdf4}
+.dir-btn{font-size:10px;padding:3px 7px;border-radius:3px;cursor:pointer;background:#f4f6f9;border:1px solid #dde1e7;color:#374151;white-space:nowrap;flex-shrink:0}
+.dir-btn:hover{background:#e8ecf2}
+/* remove channel button */
+.dir-remove{font-size:10px;padding:2px 6px;border-radius:3px;cursor:pointer;background:#fff;border:1px solid #fde68a;color:#b91c1c;flex-shrink:0;margin-left:4px}
+.dir-remove:hover{background:#fecaca;color:#991b1b}
+.left-scroll{overflow:hidden;flex:1;display:flex;flex-direction:column;min-height:0}
+.left-section{display:flex;flex-direction:column;overflow:hidden;border-bottom:1px solid #f0f2f5}
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <button class="tool-btn active" id="tool-select" title="选择(E)">↖ 选择</button>
+  <button class="tool-btn" id="tool-bbox" title="边界框(Q)">▭ 检测框</button>
+  <button class="tool-btn" id="tool-polygon" title="多边形(W)">⬡ 多边形</button>
+  <div class="tool-sep"></div>
+  <button class="tool-btn" id="btn-switch" title="切换图像(Tab)">⇄ 切换 [Tab]</button>
+  <div class="tool-sep"></div>
+  <button class="tool-btn btn-success" id="btn-save" title="保存标注到标签文件夹">💾 保存</button>
+  <button class="tool-btn btn-success" id="btn-save-all" title="保存所有已标注图像">💾 全部保存</button>
+  <div class="tool-sep"></div>
+  <button class="tool-btn btn-danger" id="btn-clear" title="清空当前标注">✕ 清空</button>
+  <div class="tool-sep"></div>
+  <button class="tool-btn" id="btn-prev" title="上一张(A)">◀ 上一张</button>
+  <button class="tool-btn" id="btn-next" title="下一张(D)">下一张 ▶</button>
+  <div class="tool-sep"></div>
+  <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#374151;cursor:pointer;user-select:none">
+    <input type="checkbox" id="chk-autosave" style="accent-color:#2563eb;width:14px;height:14px">
+    自动保存
+  </label>
+  <button class="tool-btn" id="btn-lock-zoom" title="阻止Ctrl+滚轮缩放页面，改为缩放图片">🔒 锁定页面</button>
+  <div class="tool-sep"></div>
+    <div style="margin-left:6px;display:flex;align-items:center;gap:6px">
+      <label style="font-size:12px;color:#374151">语言</label>
+      <select id="lang-select-annotator" style="padding:4px 6px;border-radius:4px;border:1px solid #dde1e7;background:#fff;color:#374151">
+        <option value="zh-CN">简体中文</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+  <button class="tool-btn" id="btn-import-config" title="从 config.json 导入配置">⚙ 导入配置</button>
+  <button class="tool-btn" id="btn-export-config" title="将当前配置导出为 config.json">⚙ 导出配置</button>
+  <input type="file" id="file-import-config" accept=".json" style="display:none">
+  <div style="margin-left:auto;font-size:11px;color:#9ca3af" id="toolbar-info"></div>
+</div>
+
+<div id="main">
+  <div id="left-panel">
+    <!-- Folder config -->
+    <div class="panel-section" style="padding:8px;border-bottom:1px solid #f0f2f5">
+      <div class="panel-title">文件夹配置</div>
+      <div class="dir-row">
+        <span class="dir-label">RGB</span>
+        <span class="dir-path" id="rgb-dir-path">未选择</span>
+        <button class="dir-btn" id="btn-rgb-dir">选择</button>
+      </div>
+      <!--  -->
+      <div class="dir-row">
+        <span class="dir-label">标签</span>
+        <span class="dir-path" id="label-dir-path">未选择</span>
+        <button class="dir-btn" id="btn-label-dir">选择</button>
+      </div>
+      <button class="btn-sm btn-primary" id="btn-scan" style="width:100%;margin-top:4px" disabled>🔍 扫描并加载图像</button>
+      <button class="btn-sm" id="btn-add-channel" style="width:100%;margin-top:6px">＋ 添加通道</button>
+    </div>
+
+    <div class="left-scroll">
+      <!-- File list: takes 45% of remaining space -->
+      <div class="left-section" style="flex:45;padding:6px 4px 2px">
+        <div class="panel-title" style="margin:0 4px 4px;flex-shrink:0">图像列表 <span id="pair-count" style="font-weight:400;text-transform:none;letter-spacing:0;color:#6b7280"></span></div>
+        <div id="file-list"></div>
+      </div>
+
+      <!-- Class list: takes 30% of remaining space -->
+      <div class="left-section" style="flex:30;padding:4px">
+        <div class="panel-title" style="flex-shrink:0">类别</div>
+        <div id="class-list"></div>
+        <div class="add-class-row" style="flex-shrink:0;margin-top:4px">
+          <input type="text" id="new-class-name" placeholder="新类别名称">
+          <input type="color" class="color-pick" id="new-class-color" value="#ff4444">
+          <button class="btn-sm" id="btn-add-class" style="flex:none;padding:4px 6px">+</button>
+        </div>
+      </div>
+
+      <!-- Ann list: takes 25% of remaining space -->
+      <div class="left-section" style="flex:25;padding:4px">
+        <div class="panel-title" style="flex-shrink:0">标注列表</div>
+        <div id="ann-list"></div>
+      </div>
+    </div>
+  </div>
+  <div class="resize-handle" data-side="left"></div>
+
+  <!-- Canvas area -->
+  <div id="canvas-area">
+    <div id="scene">
+      <div id="canvas-wrapper">
+        <canvas id="main-canvas"></canvas>
+        <canvas id="overlay-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="resize-handle" data-side="right"></div>
+
+  <!-- Class picker popup -->
+  <div id="class-picker-mask"></div>
+  <div id="class-picker">
+    <h4>选择类别</h4>
+    <div id="class-picker-list"></div>
+    <div id="class-picker-new">
+      <input type="text" id="class-picker-input" placeholder="新类别名称…">
+      <button id="class-picker-add">添加</button>
+    </div>
+  </div>
+
+  <!-- Right panel: image controls -->
+  <div id="right-panel">
+    <div class="panel-section">
+      <div class="panel-title">显示模式</div>
+      <div class="radio-group" id="display-mode-group">
+        <button class="radio-btn active" data-mode="rgb">RGB</button>
+        <button class="radio-btn" data-mode="gray">灰度</button>
+        <button class="radio-btn" data-mode="medical">医学灰度</button>
+        <button class="radio-btn" data-mode="hot">热成像</button>
+        <button class="radio-btn" data-mode="cool">冷色</button>
+        <button class="radio-btn" data-mode="jet">Jet</button>
+        <button class="radio-btn" data-mode="rainbow">彩虹</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">图像调整</div>
+      <div class="slider-row">
+        <label>亮度 <span id="val-brightness">0</span></label>
+        <input type="range" id="sl-brightness" min="-100" max="100" value="0">
+      </div>
+      <div class="slider-row">
+        <label>对比度 <span id="val-contrast">0</span></label>
+        <input type="range" id="sl-contrast" min="-100" max="100" value="0">
+      </div>
+      <div class="slider-row">
+        <label>饱和度 <span id="val-saturation">0</span></label>
+        <input type="range" id="sl-saturation" min="-100" max="100" value="0">
+      </div>
+      <div class="slider-row">
+        <label>冷暖色调 <span id="val-warmth">0</span></label>
+        <input type="range" id="sl-warmth" min="-100" max="100" value="0">
+      </div>
+      <div class="slider-row">
+        <label>伽马 <span id="val-gamma">1.0</span></label>
+        <input type="range" id="sl-gamma" min="10" max="300" value="100">
+      </div>
+      <button class="btn-sm" id="btn-reset-adj" style="width:100%;margin-top:4px">重置调整</button>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">当前图像对</div>
+      <div id="pair-info" style="font-size:10px;color:#6b7280;padding:4px;line-height:1.7"></div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">快捷键</div>
+      <div style="font-size:10px;color:#9ca3af;line-height:2">
+        <div><b style="color:#374151">A</b> — 上一张图像</div>
+        <div><b style="color:#374151">D</b> — 下一张图像</div>
+        <div><b style="color:#374151">Tab</b> — 切换可见光/红外</div>
+        <div><b style="color:#374151">V</b> — 选择工具</div>
+        <div><b style="color:#374151">B</b> — 边界框工具</div>
+        <div><b style="color:#374151">P</b> — 多边形工具</div>
+        <div><b style="color:#374151">S</b> — 保存当前标注</div>
+        <div><b style="color:#374151">Del</b> — 删除选中</div>
+        <div><b style="color:#374151">Esc</b> — 取消当前操作</div>
+        <div><b style="color:#374151">滚轮</b> — 缩放画布</div>
+        <div><b style="color:#374151">Alt+拖拽</b> — 平移画布</div>
+        <div><b style="color:#374151">Ctrl+Z</b> — 撤销</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="status-bar">
+  <span id="status-left">就绪 — 请先选择 RGB、IR 文件夹，然后点击"扫描并加载图像"</span>
+  <span id="status-right">坐标: - , -</span>
+</div>
+
+<script src="annotator1.js"></script>
+</body>
+</html>
